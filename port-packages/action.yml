@@ -1,0 +1,24 @@
+name: port-packages
+author: Gowtham Sai (gwthm.in@gmail.com)
+description: Reports port packages to getport
+runs:
+  using: 'composite'
+  steps:
+    - run: |
+        bundle exec ruby run.rb
+      shell: bash
+        #
+    # Extract packages from package manager version file based on the language.
+    - name: "Extract packages"
+      id: extract-packages
+      run: |
+        ruby ./packages.rb
+        cat packages.txt >> "$GITHUB_OUTPUT"
+      shell: bash
+
+    - name: "Extract packages identifiers"
+      id: extract-packages-identifiers
+      run: |
+        echo "identifiers=$(echo '${{steps.extract-packages.outputs.packages}}' | jq --compact-output -r '[.[] | .identifier]')" >> "$GITHUB_OUTPUT"
+
+
