@@ -30,13 +30,29 @@ def extract_go_packages
 
   in_require_block = false
 
+  # Regex pattern to match and capture host
+  host_pattern = /^(https?:\/\/)?([^\/]+)\/(.+)$/
+
   File.readlines('go.mod').each do |line|
     if line =~ /^require\s+\(/
       in_require_block = true
     elsif line =~ /^\)\s*$/
       in_require_block = false
     elsif in_require_block && line =~ /^\s*([^\s]+)\s+([^\s]+)\s*$/
-      name, version = $1, $2
+      name_with_host, version = $1, $2.gsub(/\+incompatible$/, '')
+
+      # Use regex to match and capture host
+      match = name_with_host.match(host_pattern)
+
+      if match
+        host, name = match.captures[1..2] # Extract the second and third captured groups
+      else
+        host = nil
+        name = name_with_host
+      end
+
+      # $packages << {"properties" => {"name" => name, "version" => version, "language" => "Go"}, "blueprint" => "package", "identifier" => "#{name_with_host}@#{version}", "title" => "#{name}@#{version}"}
+      # We should consider identifier as package after trimming host.
       $packages << {"properties" => {"name" => name, "version" => version, "language" => "Go"}, "blueprint" => "package", "identifier" => "#{name}@#{version}", "title" => "#{name}@#{version}"}
     end
   end
