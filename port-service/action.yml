@@ -9,6 +9,7 @@ inputs:
     required: true
     description: 'Client secret'
   testCoverage:
+    default: 0
     required: false
     descripition: 'Service test coverage'
   sonarStatus:
@@ -29,6 +30,18 @@ runs:
       shell: bash
       run: |
         echo "identifiers=$(echo '${{steps.extract-packages.outputs.packages}}' | jq --compact-output -r '[.[] | .identifier]')" >> "$GITHUB_OUTPUT"
+
+    - uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: '2.7' # Not needed with a .ruby-version file
+
+    - name: "Service language"
+      id: service-language
+      shell: bash
+      run: |
+        gem install github-linguist
+        language=`github-linguist | head -1 | awk '{print $3}'`
+        echo "language=$language" >> "$GITHUB_OUTPUT"
 
     # Extract packages from package manager version file based on the language.
     - name: "Readme content"
@@ -51,6 +64,7 @@ runs:
             "url": "${{ github.server_url }}/${{ github.repository }}",
             "README": "${{ steps.readme.outputs.readme }}",
             "about": "${{ github.event.repository.description }}",
+            "language": "${{ steps.service-language.outputs.language }}",
             "test_coverage": "${{ inputs.testCoverage }}",
             "sonar_status": "${{ inputs.sonarStatus }}"
           }

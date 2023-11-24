@@ -63,6 +63,7 @@ def extract_ruby_packages
   return unless File.exist?('Gemfile.lock')
 
   in_specification_block = false
+  version_pattern = /(~>|=>|>|=|<=|<)/
 
   File.readlines('Gemfile.lock').each do |line|
     line.strip!
@@ -71,6 +72,7 @@ def extract_ruby_packages
       in_specification_block = true
     elsif in_specification_block && line =~ /^(\S+)\s+\(([^,]+),.*\)$/
       name, version = $1, $2
+      version.gsub!(version_pattern, '').strip!
       $packages << {"properties" => {"name" => name, "version" => version, "language" => "Ruby"}, "blueprint" => "package", "identifier" => "#{name}@#{version}", "title" => "#{name}@#{version}"}
     elsif line.empty? && in_specification_block
       in_specification_block = false
