@@ -1,6 +1,6 @@
 name: port-packages
 author: Gowtham Sai (gwthm.in@gmail.com)
-description: Reports port packages to getport
+description: Reports packages to getport
 inputs:
   clientId:
     required: true
@@ -8,6 +8,10 @@ inputs:
   clientSecret:
     required: true
     description: 'Client secret'
+outputs:
+  port_packages:
+    description: 'Port packages entity'
+    value: ${{ steps.extract-packages.outputs.packages }}
 runs:
   using: 'composite'
   steps:
@@ -18,14 +22,6 @@ runs:
       run: |
         ruby ${{ github.action_path }}/packages.rb
         cat packages.txt >> "$GITHUB_OUTPUT"
-        echo "Packages...."
-        cat packages.txt
-
-    - name: "Extract packages identifiers"
-      id: extract-packages-identifiers
-      shell: bash
-      run: |
-        echo "identifiers=$(echo '${{steps.extract-packages.outputs.packages}}' | jq --compact-output -r '[.[] | .identifier]')" >> "$GITHUB_OUTPUT"
 
     - name: "Report packages to port"
       uses: port-labs/port-github-action@v1

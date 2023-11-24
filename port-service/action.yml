@@ -1,0 +1,61 @@
+name: port-service
+author: Gowtham Sai (gwthm.in@gmail.com)
+description: Reports service to getport
+inputs:
+  clientId:
+    required: true
+    description: 'Client ID'
+  clientSecret:
+    required: true
+    description: 'Client secret'
+  testCoverage:
+    required: false
+    descripition: 'Service test coverage'
+  sonarStatus:
+    required: false
+    description: 'Service sonar status'
+runs:
+  using: 'composite'
+  steps:
+    - name: "Extract packages"
+      id: extract-packages
+      shell: bash
+      run: |
+        ruby ${{ github.action_path }}/packages.rb
+        cat packages.txt >> "$GITHUB_OUTPUT"
+
+    - name: "Extract packages identifiers"
+      id: extract-packages-identifiers
+      shell: bash
+      run: |
+        echo "identifiers=$(echo '${{steps.extract-packages.outputs.packages}}' | jq --compact-output -r '[.[] | .identifier]')" >> "$GITHUB_OUTPUT"
+
+    # Extract packages from package manager version file based on the language.
+    - name: "Readme content"
+      id: readme
+      shell: bash
+      run: |
+        echo "readme=$(awk '{printf("%s\n", $0)}' README.md | tr '\n' '|' | sed 's/|/\\n/g')" >> "$GITHUB_OUTPUT"
+
+    - name: "Report service to port"
+      uses: port-labs/port-github-action@v1
+      with:
+        clientId: ${{ inputs.clientId }}
+        clientSecret: ${{ inputs.clientSecret }}
+        identifier: ${{ github.event.repository.name }}
+        title: ${{ github.event.repository.name }}
+        blueprint: service
+        properties: |
+          {
+            "name": "${{ github.event.repository.name }}",
+            "url": "${{ github.server_url }}/${{ github.repository }}",
+            "README": "${{ steps.readme.outputs.readme }}",
+            "about": "${{ github.event.repository.description }}",
+            "test_coverage": "${{ inputs.testCoverage }}",
+            "sonar_status": "${{ inputs.sonarStatus }}"
+          }
+        relations: |
+          {
+            "package": ${{ steps.extract-packages-identifiers.outputs.identifiers }}
+          }
+
