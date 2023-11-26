@@ -1,0 +1,55 @@
+name: port-deployment
+author: Gowtham Sai (gwthm.in@gmail.com)
+description: Reports deployment to getport
+inputs:
+  clientId:
+    required: true
+    description: 'Client ID'
+  clientSecret:
+    required: true
+    description: 'Client secret'
+  serviceName:
+    required: false
+    description: 'Service name'
+runs:
+  using: 'composite'
+  steps:
+    - name: deployment props
+      id: deployment-props
+      shell: bash
+      run: |
+        ref=${GITHUB_REF##*/}
+        title="${{ github.event.repository.name }}@$ref"
+        echo "title=${title}" >> "$GITHUB_OUTPUT"
+        if [ -z "$INPUT_SERVICE_NAME" ]; then
+          echo "service=${{ github.event.repository.name }}" >> "$GITHUB_OUTPUT"
+        else
+          echo "service=$INPUT_SERVICE_NAME" >> "$GITHUB_OUTPUT"
+        fi
+      env:
+        INPUT_SERVICE_NAME: ${{ inputs.serviceName }}
+
+    - name: "Report deployment to Port 🚢"
+      if: ${{ always() }}
+      uses: port-labs/port-github-action@v1
+      with:
+        clientId: ${{ inputs.clientId }}
+        clientSecret: ${{ inputs.clientSecret }}
+        identifier: ${{ github.sha }}
+        title: ${{ steps.deployment-props.outputs.title }}
+        blueprint: deployment
+        properties: |
+          {
+              "triggeringActor": "${{ github.actor }}",
+              "link": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}",
+              "commitSha": "${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}",
+              "status": "${{ env.WORKFLOW_CONCLUSION }}",
+              "deployBranch": "${{ github.ref_name }}",
+              "deployBranchUrl": "${{ github.server_url }}/${{ github.repository }}/tree/${{ github.ref_name }}"
+          }
+        relations: |
+          {
+              "service": "${{ steps.deployment-props.outputs.service }}",
+              "repository": "${{ github.event.repository.name }}"
+          }
+

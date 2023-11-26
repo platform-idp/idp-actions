@@ -8,6 +8,9 @@ inputs:
   clientSecret:
     required: true
     description: 'Client secret'
+  serviceName:
+    required: false
+    description: 'Service name'
   testCoverage:
     default: 0
     required: false
@@ -35,13 +38,20 @@ runs:
       with:
         ruby-version: '2.7' # Not needed with a .ruby-version file
 
-    - name: "Service language"
-      id: service-language
+    - name: "Service properties"
+      id: service-props
       shell: bash
       run: |
         gem install github-linguist
         language=`github-linguist | head -1 | awk '{print $3}'`
         echo "language=$language" >> "$GITHUB_OUTPUT"
+        if [ -z "$INPUT_SERVICE_NAME" ]; then
+          echo "service=${{ github.event.repository.name }}" >> "$GITHUB_OUTPUT"
+        else
+          echo "service=$INPUT_SERVICE_NAME" >> "$GITHUB_OUTPUT"
+        fi
+      env:
+        INPUT_SERVICE_NAME: ${{ inputs.serviceName }}
 
     # Extract packages from package manager version file based on the language.
     - name: "Readme content"
@@ -55,21 +65,23 @@ runs:
       with:
         clientId: ${{ inputs.clientId }}
         clientSecret: ${{ inputs.clientSecret }}
-        identifier: ${{ github.event.repository.name }}
-        title: ${{ github.event.repository.name }}
+        identifier: ${{ steps.service-props.outputs.service }}
+        title: ${{ steps.service-props.outputs.service }}
         blueprint: service
         properties: |
           {
-            "name": "${{ github.event.repository.name }}",
+            "name": "${{ steps.service-props.outputs.service }}",
             "url": "${{ github.server_url }}/${{ github.repository }}",
             "README": "${{ steps.readme.outputs.readme }}",
             "about": "${{ github.event.repository.description }}",
-            "language": "${{ steps.service-language.outputs.language }}",
+            "language": "${{ steps.service-props.outputs.language }}",
             "test_coverage": "${{ inputs.testCoverage }}",
             "sonar_status": "${{ inputs.sonarStatus }}"
           }
         relations: |
           {
-            "package": ${{ steps.extract-packages-identifiers.outputs.identifiers }}
+            "package": "${{ steps.extract-packages-identifiers.outputs.identifiers }}",
+            "repository": "${{ github.event.repository.name }}"
           }
+
 
