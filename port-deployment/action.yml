@@ -11,6 +11,9 @@ inputs:
   serviceName:
     required: false
     description: 'Service name'
+  status:
+    required: false
+    description: 'Deployment status'
 runs:
   using: 'composite'
   steps:
@@ -21,13 +24,26 @@ runs:
         ref=${GITHUB_REF##*/}
         title="${{ github.event.repository.name }}@$ref"
         echo "title=${title}" >> "$GITHUB_OUTPUT"
+
+        # service name
         if [ -z "$INPUT_SERVICE_NAME" ]; then
           echo "service=${{ github.event.repository.name }}" >> "$GITHUB_OUTPUT"
         else
           echo "service=$INPUT_SERVICE_NAME" >> "$GITHUB_OUTPUT"
         fi
+
+        # deployment status
+        gh auth status
+        if [ -z "$INPUT_STATUS" ]; then
+          status=`gh api -XGET "/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}" --jq='.status'`
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+        else
+          echo "status=$INPUT_STATUS" >> "$GITHUB_OUTPUT"
+        fi
       env:
+        GH_TOKEN: ${{ github.token }}
         INPUT_SERVICE_NAME: ${{ inputs.serviceName }}
+        INPUT_STATUS: ${{ inputs.status }}
 
     - name: "Report deployment to Port 🚢"
       if: ${{ always() }}
@@ -43,7 +59,7 @@ runs:
               "triggeringActor": "${{ github.actor }}",
               "link": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}",
               "commitSha": "${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}",
-              "status": "${{ env.WORKFLOW_CONCLUSION }}",
+              "status": "${{ steps.deployment-props.outputs.status }}",
               "deployBranch": "${{ github.ref_name }}",
               "deployBranchUrl": "${{ github.server_url }}/${{ github.repository }}/tree/${{ github.ref_name }}"
           }
