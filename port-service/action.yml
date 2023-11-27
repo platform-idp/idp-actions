@@ -42,8 +42,8 @@ runs:
       id: service-props
       shell: bash
       run: |
-        gem install github-linguist
-        language=`github-linguist | head -1 | awk '{print $3}'`
+        gh auth status
+        language=`gh api -XGET "/repos/${{ github.repository }}" --jq='.language'`
         echo "language=$language" >> "$GITHUB_OUTPUT"
         if [ -z "$INPUT_SERVICE_NAME" ]; then
           echo "service=${{ github.event.repository.name }}" >> "$GITHUB_OUTPUT"
@@ -51,6 +51,7 @@ runs:
           echo "service=$INPUT_SERVICE_NAME" >> "$GITHUB_OUTPUT"
         fi
       env:
+        GH_TOKEN: ${{ github.token }}
         INPUT_SERVICE_NAME: ${{ inputs.serviceName }}
 
     # Extract packages from package manager version file based on the language.
@@ -80,7 +81,7 @@ runs:
           }
         relations: |
           {
-            "package": "${{ steps.extract-packages-identifiers.outputs.identifiers }}",
+            "package": ${{ steps.extract-packages-identifiers.outputs.identifiers }},
             "repository": "${{ github.event.repository.name }}"
           }
 
