@@ -21,7 +21,8 @@ def extract_node_packages
 
   package_json = JSON.parse(File.read('package.json'))
   $packages += (package_json['dependencies'] || {}).merge(package_json['devDependencies'] || {}).map do |key, value|
-    {"properties" => {"name" => key, "version" => value, "language" => "Node"}, "blueprint" => "package", "identifier" => "#{key.gsub(/[\/.^]/, '-')}@#{value}", "title" => "#{key}@#{value}"}
+    pname = key.gsub('@', '')
+    {"properties" => {"name" => pname, "version" => value, "language" => "Node"}, "blueprint" => "package", "identifier" => "#{pname.gsub(/[\/.^]/, '-')}@#{value}", "title" => "#{pname}@#{value}"}
   end
 end
 
