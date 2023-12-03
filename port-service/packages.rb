@@ -1,6 +1,7 @@
 #!/usr/bin/env ruby
 
 require 'json'
+require 'bundler'
 
 $packages = []
 
@@ -61,23 +62,11 @@ end
 # Extract Ruby package information from Gemfile.lock
 def extract_ruby_packages
   return unless File.exist?('Gemfile.lock')
-
-  in_specification_block = false
-  version_pattern = /(~>|=>|>|=|<=|<)/
-
-  File.readlines('Gemfile.lock').each do |line|
-    line.strip!
-
-    if line.start_with?('GEM')
-      in_specification_block = true
-    elsif in_specification_block && line =~ /^(\S+)\s+\(([^,]+),.*\)$/
-      name, version = $1, $2
-      version.gsub!(version_pattern, '').strip!
-      $packages << {"properties" => {"name" => name, "version" => version, "language" => "Ruby"}, "blueprint" => "package", "identifier" => "#{name}@#{version}", "title" => "#{name}@#{version}"}
-    elsif line.empty? && in_specification_block
-      in_specification_block = false
-    end
-  end
+  parser = Bundler::LockfileParser.new(Bundler.read_file('Gemfile.lock'))
+  parser.specs.each { |spec|
+    name, version = spec.name, spec.version.to_s
+    $packages << {"properties" => {"name" => name, "version" => version.to_s, "language" => "Ruby"}, "blueprint" => "package", "identifier" => "#{name}@#{version}", "title" => "#{name}@#{version}"}
+  }
 end
 
 # Helper method to write packages to the output file
